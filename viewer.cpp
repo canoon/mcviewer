@@ -6,6 +6,7 @@
 #include<GL/gl.h>
 #include<GL/glx.h>
 #include<GL/glu.h>
+#include <new> 
 #include "minecraftmap.cpp"
 
 
@@ -16,7 +17,6 @@ struct rect
 };
 
 GLuint textures[256];
-
 
 
 
@@ -74,7 +74,7 @@ assigntextures ()
       glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
       glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
       glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
       // when texture area is small, bilinear filter the closest mipmap
       //    glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
       //             GL_LINEAR_MIPMAP_NEAREST );
@@ -102,6 +102,50 @@ assigntextures ()
 
 }
 
+int getTexture(int blocktype, int side) {
+    switch (blocktype) {
+	    case 0: 
+		 return -1;
+	    case 1:
+		 return 1;
+	    case 2:
+		 if (side == 0) {
+			 return 30;
+		 } else if (side == 5) {
+		     return 2;
+		 } else {
+		     return 3;
+		 }
+	    case 3:
+		 return 2;
+	    case 4: return 16;
+	    case 5: return 4;
+            case 6: return -1;
+            case 7: return 17;
+	    case 8: return 14;
+	    case 9: return 14;
+	    case 10: return 237;
+	    case 11: return 237;
+	    case 12: return 18;
+	    case 13: return 19;
+	    case 14: return 32;
+	    case 15: return 33;
+	    case 16: return 34;
+	    case 17: if (side == 0 || side == 5) { return 21; } else { return 20; };
+	    case 18: return -1;
+            case 19: return 48;
+	    case 20: return -1;
+	    case 21: return 160;
+	    case 22: return 144;
+	    case 23: if (side == 1) { return 46; } else if (side == 0 || side == 5) { return 62; } else { return 45; }
+	    case 24: return 176;
+	    case 25: return 74;
+	    case 26: return -1;
+            case 35: return 64;
+   }
+   return -1;
+}
+     				 
 
 int
 redraw ()
@@ -110,8 +154,8 @@ redraw ()
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glMatrixMode (GL_MODELVIEW);
   glLoadIdentity ();
-  gluPerspective (90.0, 0.8, 0.8, 10000.0);
-  gluLookAt (-16., 64., 32, 8., 48., 8., 0., 1., 0.);
+  gluPerspective (90.0, 0.8, 10., 10000.0);
+  gluLookAt (0., 100., 0, 50., 48., 50., 0., 1., 0.);
 
 /*	   glBegin(GL_QUADS);
 	     glColor3f(1., 0., 0.); glVertex3f(-.75, -.75, 0.);
@@ -131,51 +175,76 @@ redraw ()
 
   assigntextures ();
   glEnable (GL_TEXTURE_2D);
-  const unsigned char *nbt = get_region_nbt(world_location, 0, 0);
-  assert(nbt);
-  const unsigned char *blocks = getNBT("Level.Blocks", nbt + 3);
+  World *a = new World(world_location);
+  const unsigned char *blocks[32][32];
+  memset (blocks, 0, sizeof(blocks));
+  for (int x = 0; x< 32; x++) {
+	  for (int z = 0; z < 32; z++) {
+		  fprintf(stderr, "%p\n", a);
+		  unsigned char * tmp = a->chunk(x,z);
+		  if (tmp) {
+			  blocks[x][z] = getNBT("Level.Blocks", tmp + 3);
+		  } else {
+			  blocks[x][z] = 0;
+		  }
+          }
+  }
 
-  for (int x = 0; x < 16; x++)
+
+  for (int x = 0; x < 16 * 16; x++)
     {
       for (int y = 0; y < 128; y++)
 	{
-	  for (int z = 0; z < 16; z++)
+	  for (int z = 0; z < 16 * 16; z++)
 	    {
-	      int texture = blocks[y + z * 128 + x * 128 * 16];
-	      if (texture)
-		{
-		  glBindTexture (GL_TEXTURE_2D, textures[texture]);
-		  glBegin (GL_QUADS);
-		  glTexCoord2d (0.0, 0.0);
-		  glVertex3d (x, y, z);
-		  glTexCoord2d (1.0, 0.0);
-		  glVertex3d (x + 1, y, z);
-		  glTexCoord2d (1.0, 1.0);
-		  glVertex3d (x + 1, y + 1, z);
-		  glTexCoord2d (0.0, 1.0);
-		  glVertex3d (x, y + 1, z);
-		  glEnd ();
-		  glBegin (GL_QUADS);
-		  glTexCoord2d (0.0, 0.0);
-		  glVertex3d (x, y, z);
-		  glTexCoord2d (1.0, 0.0);
-		  glVertex3d (x + 1, y, z);
-		  glTexCoord2d (1.0, 1.0);
-		  glVertex3d (x + 1, y, z - 1);
-		  glTexCoord2d (0.0, 1.0);
-		  glVertex3d (x, y, z - 1);
-		  glEnd ();
-		  glBegin (GL_QUADS);
-		  glTexCoord2d (0.0, 0.0);
-		  glVertex3d (x, y, z);
-		  glTexCoord2d (1.0, 0.0);
-		  glVertex3d (x, y, z - 1);
-		  glTexCoord2d (1.0, 1.0);
-		  glVertex3d (x, y + 1, z - 1);
-		  glTexCoord2d (0.0, 1.0);
-		  glVertex3d (x, y + 1, z);
-		  glEnd ();
-		}
+	      if (blocks[x/16][z/16]) {
+		      int block = blocks[x/16][z/16][y + (z % 16) * 128 + (x % 16) * 128 * 16];
+
+		      int texture;
+		      texture = getTexture(block, 0);
+		      if (texture != -1) {
+			  glBindTexture (GL_TEXTURE_2D, textures[texture]);
+		      
+			  glBegin (GL_QUADS);
+			  glTexCoord2d (0.0, 0.0);
+			  glVertex3d (x, y + 1, z);
+			  glTexCoord2d (1.0, 0.0);
+			  glVertex3d (x + 1, y + 1, z);
+			  glTexCoord2d (1.0, 1.0);
+			  glVertex3d (x + 1, y + 1, z + 1);
+			  glTexCoord2d (0.0, 1.0);
+			  glVertex3d (x, y + 1, z + 1);
+			  glEnd ();
+		      }
+		      texture = getTexture(block, 1);
+		      if (texture != -1) {
+			  glBindTexture (GL_TEXTURE_2D, textures[texture]);
+			  glBegin (GL_QUADS);
+			  glTexCoord2d (0.0, 0.0);
+			  glVertex3d (x, y, z);
+			  glTexCoord2d (1.0, 0.0);
+			  glVertex3d (x + 1, y, z);
+			  glTexCoord2d (1.0, 1.0);
+			  glVertex3d (x + 1, y + 1, z);
+			  glTexCoord2d (0.0, 1.0);
+			  glVertex3d (x, y + 1, z);
+			  glEnd ();
+		      }
+		      texture = getTexture(block, 2);
+		      if (texture != -1) {
+			  glBindTexture (GL_TEXTURE_2D, textures[texture]);
+			  glBegin (GL_QUADS);
+			  glTexCoord2d (0.0, 0.0);
+			  glVertex3d (x, y, z);
+			  glTexCoord2d (1.0, 0.0);
+			  glVertex3d (x, y, z + 1);
+			  glTexCoord2d (1.0, 1.0);
+			  glVertex3d (x, y + 1, z + 1);
+			  glTexCoord2d (0.0, 1.0);
+			  glVertex3d (x, y + 1, z);
+			  glEnd ();
+		      }
+		    }
 	    }
 	}
     }
@@ -218,7 +287,7 @@ main (int argc, char *argv[])
   swa.event_mask = ExposureMask | KeyPressMask;
 
   Window win =
-    XCreateWindow (dpy, root, 0, 0, 600, 600, 0, vi->depth, InputOutput,
+    XCreateWindow (dpy, root, 0, 0, 1900, 1000, 0, vi->depth, InputOutput,
 		   vi->visual, CWColormap | CWEventMask, &swa);
 
   XMapWindow (dpy, win);
